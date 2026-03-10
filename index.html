@@ -5,83 +5,89 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>城通解析</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{
-    background:#f6f6f6;
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    background:#f5f5f5;
     padding:20px;
-    font-family:sans-serif
-}
-.container{
-    max-width:420px;
+    font-family:sans-serif;
+  }
+  .wrap{
+    max-width:400px;
     margin:0 auto;
     background:#fff;
-    padding:24px;
+    padding:22px;
     border-radius:12px;
-}
-h3{
+  }
+  h3{
     text-align:center;
     margin-bottom:16px;
-}
-input{
+  }
+  input{
     width:100%;
     padding:12px;
     margin:8px 0;
     border:1px solid #ddd;
     border-radius:8px;
-}
-button{
+  }
+  button{
     width:100%;
     padding:12px;
     background:#007bff;
     color:#fff;
     border:none;
     border-radius:8px;
-}
-#info{
+  }
+  .info{
     margin-top:12px;
     line-height:1.6;
     word-break:break-all;
-}
+  }
 </style>
 </head>
 <body>
-<div class="container">
-    <h3>城通网盘解析</h3>
-    <input id="link" placeholder="粘贴ctfile链接">
-    <button onclick="parse()">解析并下载</button>
-    <div id="info"></div>
+<div class="wrap">
+  <h3>城通网盘解析</h3>
+  <input id="link" placeholder="粘贴ctfile链接">
+  <button onclick="go()">解析下载</button>
+  <div class="info" id="tip"></div>
 </div>
 
 <script>
 const API = "http://ct.onlysite.dpdns.org";
 
-async function parse() {
-    const link = document.getElementById("link").value.trim();
-    const info = document.getElementById("info");
-    
-    if (!link) { info.textContent = "请输入链接"; return; }
-    info.textContent = "获取中...";
+async function go() {
+  const link = document.getElementById("link").value.trim();
+  const tip = document.getElementById("tip");
+  if (!link) { tip.textContent = "请输入链接"; return; }
+  tip.textContent = "获取直链...";
 
-    try {
-        // 先请求获取真实直链（含downname）
-        const resp = await fetch(`${API}/download?xtlink=${encodeURIComponent(link)}&file_id=`, { method: 'HEAD', redirect: 'follow' });
-        
-        // 拿到最终的真实下载地址（带downname）
-        const realUrl = resp.url;
-        info.textContent = "下载地址已获取";
+  try {
+    // 拿到真实下载地址（含downname）
+    let resp = await fetch(`${API}/download?xtlink=${encodeURIComponent(link)}`, { redirect: "follow" });
+    let realUrl = resp.url;
 
-        // 直接下载，浏览器自动识别 downname 文件名
-        const a = document.createElement("a");
-        a.href = realUrl;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
+    // 从链接里截 downname 解码成正确文件名
+    let name = "文件.txt";
+    let m = realUrl.match(/downname=([^&]+)/);
+    if (m) name = decodeURIComponent(m[1]);
 
-        info.textContent = "✅ 下载开始，文件名自动正确";
-        
-    } catch(e) {
-        info.textContent = "解析失败";
-    }
+    tip.textContent = "文件名：" + name;
+
+    // 用 AJAX 下载 + 强制命名（唯一能解决bin的方法）
+    let blob = await fetch(realUrl).then(r => r.blob());
+    let url = URL.createObjectURL(blob);
+    let a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+
+    tip.textContent = "✅ 下载完成：" + name;
+  } catch(e) {
+    tip.textContent = "失败";
+  }
 }
 </script>
 </body>
