@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>城通网盘解析</title>
+    <style>
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{max-width:500px;margin:40px auto;padding:20px;background:#f0f2f5}
+        .card{background:#fff;border-radius:14px;padding:22px;box-shadow:0 4px 12px rgba(0,0,0,0.08)}
+        h2{margin-bottom:16px;color:#111}
+        input{width:100%;padding:14px;border:1px solid #ddd;border-radius:10px;font-size:16px;margin-bottom:12px}
+        button{width:100%;padding:14px;background:#007bff;color:white;border:none;border-radius:10px;font-size:16px}
+        button:disabled{background:#8ab6ff}
+        .info{margin-top:14px;line-height:1.6}
+        .fname{font-weight:600;color:#007bff}
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>城通网盘解析下载</h2>
+        <input type="text" id="link" placeholder="粘贴 ctfile:// 链接">
+        <button onclick="go()">解析并下载</button>
+        <div class="info" id="tip"></div>
+    </div>
+
+    <script>
+        const API = "http://ct.onlysite.dpdns.org";
+
+        async function go() {
+            const l = document.getElementById("link").value.trim();
+            const t = document.getElementById("tip");
+            if (!l) { t.innerText = "请输入链接"; return; }
+            
+            t.innerText = "获取文件信息...";
+            document.querySelector("button").disabled = true;
+
+            try {
+                let res = await fetch(`${API}/download_info?xtlink=${encodeURIComponent(l)}`);
+                let data = await res.json();
+
+                if (!data || !data[0]) {
+                    t.innerText = "未获取到文件信息";
+                    document.querySelector("button").disabled = false;
+                    return;
+                }
+
+                let fid = data[0].key;
+                let name = data[0].name;
+
+                t.innerHTML = `文件名：<span class="fname">${name}</span><br>正在开始下载...`;
+
+                let a = document.createElement("a");
+                a.href = `${API}/download?xtlink=${encodeURIComponent(l)}&file_id=${fid}`;
+                a.download = name;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+
+                t.innerHTML = `文件名：<span class="fname">${name}</span><br>✅ 下载已启动`;
+
+            } catch (e) {
+                t.innerText = "网络或服务异常，请重试";
+            }
+
+            document.querySelector("button").disabled = false;
+        }
+    </script>
+</body>
+</html>
