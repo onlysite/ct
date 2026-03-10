@@ -11,7 +11,7 @@
     padding:20px;
     font-family:sans-serif;
   }
-  .wrap{
+  .box{
     max-width:400px;
     margin:0 auto;
     background:#fff;
@@ -37,56 +37,57 @@
     border:none;
     border-radius:8px;
   }
-  .info{
+  .tip{
     margin-top:12px;
+    text-align:center;
     line-height:1.6;
-    word-break:break-all;
   }
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="box">
   <h3>城通网盘解析</h3>
   <input id="link" placeholder="粘贴ctfile链接">
-  <button onclick="go()">解析下载</button>
-  <div class="info" id="tip"></div>
+  <button onclick="parse()">解析下载</button>
+  <div class="tip" id="tip"></div>
 </div>
 
 <script>
 const API = "http://ct.onlysite.dpdns.org";
 
-async function go() {
+async function parse() {
   const link = document.getElementById("link").value.trim();
   const tip = document.getElementById("tip");
-  if (!link) { tip.textContent = "请输入链接"; return; }
-  tip.textContent = "获取直链...";
+
+  if (!link) {
+    tip.textContent = "请输入链接";
+    return;
+  }
+
+  tip.textContent = "获取文件信息...";
 
   try {
-    // 拿到真实下载地址（含downname）
-    let resp = await fetch(`${API}/download?xtlink=${encodeURIComponent(link)}`, { redirect: "follow" });
-    let realUrl = resp.url;
+    // 只走 info 接口
+    const res = await fetch(`${API}/download_info?xtlink=${encodeURIComponent(link)}`);
+    const data = await res.json();
+    const name = data[0].name;
+    const fid = data[0].key;
+    const url = `${API}/download?xtlink=${encodeURIComponent(link)}&file_id=${fid}`;
 
-    // 从链接里截 downname 解码成正确文件名
-    let name = "文件.txt";
-    let m = realUrl.match(/downname=([^&]+)/);
-    if (m) name = decodeURIComponent(m[1]);
+    tip.textContent = "文件：" + name;
 
-    tip.textContent = "文件名：" + name;
-
-    // 用 AJAX 下载 + 强制命名（唯一能解决bin的方法）
-    let blob = await fetch(realUrl).then(r => r.blob());
-    let url = URL.createObjectURL(blob);
-    let a = document.createElement("a");
+    // 最稳下载方式
+    const a = document.createElement("a");
     a.href = url;
     a.download = name;
     document.body.appendChild(a);
     a.click();
     a.remove();
-    URL.revokeObjectURL(url);
 
-    tip.textContent = "✅ 下载完成：" + name;
-  } catch(e) {
-    tip.textContent = "失败";
+    tip.textContent = "✅ 下载中：" + name;
+
+  } catch (e) {
+    tip.textContent = "解析失败";
   }
 }
 </script>
